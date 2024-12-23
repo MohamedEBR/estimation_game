@@ -1,0 +1,4 @@
+repository "estimation-game-client/estimation-game-client@3574283742114@cloud"
+  path "/"
+    br "/main"
+    co "/main"
