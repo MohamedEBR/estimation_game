@@ -1,33 +1,81 @@
 using InexperiencedDeveloper.Core;
 using Riptide;
 using Riptide.Utils;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class NetworkManager : Singleton<NetworkManager>
+public enum ServerToClientMsg : ushort
 {
-    protected override void Awake()
+    ApproveLogin,
+}
+
+public enum ClientToServerMsg : ushort
+{
+    RequestLogin,
+}
+
+public class NetworkManager : MonoBehaviour //Singleton<NetworkManager>
+{
+    protected  void Awake()
     {
-        base.Awake();
+        //base.Awake();
         RiptideLogger.Initialize(Debug.Log, Debug.Log, Debug.LogWarning, Debug.LogError, true);
     }
+    [SerializeField] private NetworkSettingsSO m_netSettings;
+    public Client Client { get; private set; }
 
-    public Client Client;
-    [SerializeField] private ushort m_Port =7777;
-    [SerializeField] private string m_Ip = "10.0.0.229";
+
+
     private void Start()
     {
         Client = new Client();
-        Connect();
+        Client.Connected += OnClientConnected;
+        Subscribe();
     }
 
-    public void Connect()
+    private void Subscribe()
     {
-        Client.Connect($"{m_Ip}:{m_Port}");
+        NetworkEvents.ConnectRequest += Connect;
+        NetworkEvents.SendMessage += OnSendMessage;
     }
-    private void Update()
+
+    private void OnSendMessage(Message msg)
+    {
+        Client.Send(msg);
+    }
+
+    private void Unsubscribe()
+    {
+        NetworkEvents.ConnectRequest -= Connect;
+        NetworkEvents.SendMessage -= OnSendMessage;
+
+    }
+
+    private void OnClientConnected(object sender, EventArgs e)
+    {
+        NetworkEvents.OnConnectSuccess(Client.Id, m_netSettings.LocalUsername);
+        m_netSettings.LocalId = Client.Id;
+        //PlayerManager.Instance.SpawnInitalPlayer(s_LocalUsername);
+    }
+
+    public void Connect(string username, string password)
+    {
+        m_netSettings.LocalUsername = string.IsNullOrEmpty(username) ? $"Guest" : username;
+        //TODO: SEND PASSWORD AND VALIDATE
+        Client.Connect($"{m_netSettings.Ip}:{m_netSettings.Port}");
+    }
+
+    private void FixedUpdate()
     {
         Client.Update();
+    }
+
+    protected  void OnDestroy()
+    {
+        //base.OnDestroy();
+        Unsubscribe();
+        Client.Connected -= OnClientConnected;
     }
 }
