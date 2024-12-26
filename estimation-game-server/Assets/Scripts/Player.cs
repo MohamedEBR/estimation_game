@@ -1,25 +1,35 @@
 using UnityEngine;
 using Mirror;
+using UnityEngine.SceneManagement;
 public class Player : NetworkBehaviour
 {
 
     public static Player localPlayer;
     
     [SyncVar] public string matchID;
+    [SyncVar] public int playerIndex;
 
     NetworkMatch networkMatch;
 
     void Start()
     {
+        networkMatch = GetComponent<NetworkMatch>();
+
         if (isLocalPlayer)
         {
             localPlayer = this;
             Debug.Log("localPlayer assigned.");
+        } else
+        {
+            UILobby.instance.SpawnPlayerPrefab(this);
         }
 
-        networkMatch = GetComponent<NetworkMatch>();
 
     }
+
+    /* 
+    Host Match
+    */
     public void HostGame()
     {
         string matchID = MatchMaker.GetRandomMatchID();
@@ -29,7 +39,7 @@ public class Player : NetworkBehaviour
     void CmdHostGame(string _matchID)
     {
         matchID = _matchID;
-       if(MatchMaker.instance.HostGame(_matchID, this))
+       if(MatchMaker.instance.HostGame(_matchID, this, out int playerIndex))
         {
 
             Debug.Log($"<color = green>Game Hosted Successfully</color>");
@@ -49,6 +59,9 @@ public class Player : NetworkBehaviour
         UILobby.instance.HostSuccess(success);
     }
 
+    /* 
+     Join Match
+     */
     public void JoinGame(string _inputID)
     {
         CmdJoinGame(_inputID);
@@ -58,7 +71,7 @@ public class Player : NetworkBehaviour
     void CmdJoinGame(string _matchID)
     {
         matchID = _matchID;
-        if (MatchMaker.instance.JoinGame(_matchID, this))
+        if (MatchMaker.instance.JoinGame(_matchID, this, out int playerIndex))
         {
 
             Debug.Log($"<color = green>Game Joined Successfully</color>");
@@ -78,4 +91,35 @@ public class Player : NetworkBehaviour
         Debug.Log($"MatchID: {matchID} == {_matchID}");
         UILobby.instance.JoinSuccess(success);
     }
+
+    /* 
+    Begin Match
+    */
+    public void BeginGame()
+    {
+        CmdBeginGame();
+    }
+
+    [Command]
+    void CmdBeginGame()
+    {
+        MatchMaker.instance.BeginGame(matchID);
+        Debug.Log("Game Beginning");
+    }
+
+
+    public void StartGame()
+    {
+        TargetBeginGame();
+
+    }
+    [TargetRpc]
+    void TargetBeginGame()
+    {
+        Debug.Log($"MatchID: {matchID} | Beginning");
+
+        //Additively load game scene
+        SceneManager.LoadScene(2, LoadSceneMode.Additive);
+    }
+
 }

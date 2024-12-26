@@ -39,17 +39,21 @@ public class MatchMaker : NetworkBehaviour
 
     public SyncList<string> matchIDs = new();
 
+
+    [SerializeField] GameObject turnManagerPrefab;
     void Start()
     {
         instance = this;
     }
-    public bool HostGame(string _matchID, Player _player)
+    public bool HostGame(string _matchID, Player _player, out int playerIndex)
     {
+        playerIndex = -1;
         if (!matchIDs.Contains(_matchID))
         {
             matchIDs.Add(_matchID);
             matches.Add(new Match(_matchID, _player));
             Debug.Log("Match Id generated");
+            playerIndex = 1;
             return true;
         }
         else
@@ -60,8 +64,27 @@ public class MatchMaker : NetworkBehaviour
 
     }
 
-    public bool JoinGame(string _matchID, Player _player)
+    public void BeginGame(string _matchID)
     {
+        GameObject newTurnManager = Instantiate(turnManagerPrefab);
+        newTurnManager.GetComponent<NetworkMatch>().matchId = _matchID.ToGuid();
+        TurnManager turnManager = newTurnManager.GetComponent<TurnManager>();
+
+        for (int i = 0; i < matches.Count; i++) {   
+            if(matches[i].matchID == _matchID){
+                foreach (var player in matches[i].players) { 
+                    Player _player = player.GetComponent<Player>();
+                    turnManager.AddPlayer(_player);
+                    _player.StartGame();
+                }
+                break;
+            }
+        }
+    }
+
+    public bool JoinGame(string _matchID, Player _player, out int playerIndex)
+    {
+        playerIndex = -1;
         if (matchIDs.Contains(_matchID))
         {
 
@@ -70,6 +93,7 @@ public class MatchMaker : NetworkBehaviour
                 if (matches[i].matchID == _matchID)
                 {
                     matches[i].players.Add(_player);
+                    playerIndex = matches[i].players.Count;
                     break;
                 }
             }
