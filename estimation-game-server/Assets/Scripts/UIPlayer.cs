@@ -4,7 +4,7 @@ using UnityEngine.UI;
 public class UIPlayer : MonoBehaviour
 {
     [SerializeField] TMP_Text text;
-    Player player;
+    public Player player;
 
     public void SetPlayer(Player player)
     {
